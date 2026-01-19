@@ -5,7 +5,11 @@ SET SERVEROUTPUT ON;
 
 --Para la fecha de proceso se usa variable Bind, ya que no se puede con DATE se uso varchar y se trasforma luego en DATE en el bloque
 VARIABLE b_fecha_proceso VARCHAR2(10);
+--Para el ejercicio use la fecha actual
 EXEC :b_fecha_proceso := TO_CHAR(SYSDATE, 'DD-MM-YYYY');
+
+--Fecha de forma parametrica
+--EXEC :b_fecha_proceso := '&fecha_proceso';
 /
 
 DECLARE
@@ -19,6 +23,8 @@ DECLARE
     
     --cantidad de empleados a procesar
     v_total_empleados NUMBER;
+    --contador de iteraciones para confirmar que se agregaron todos los empleados
+    v_contador NUMBER:=0;
     
     --variables adicionales para construir el usuario
     v_estado_civil estado_civil.nombre_estado_civil%TYPE;
@@ -64,7 +70,7 @@ BEGIN
             ON ec.id_estado_civil = e.id_estado_civil
         WHERE id_emp = v_empleado_id;
         
-        --Años de servicio
+        --Calcula los años de servicio del empleado
         v_anios_servicio := TRUNC(MONTHS_BETWEEN( TO_DATE(:b_fecha_proceso, 'DD-MM-YYYY'), v_fecha_contratacion) / 12);
         
         --Nombre de usuario
@@ -120,11 +126,22 @@ BEGIN
         --Se incrementa el id para evaluar el siguiente empleado
         v_empleado_id := v_empleado_id + 10;
         
-        DBMS_OUTPUT.PUT_LINE('Cliente procesado: ' || v_nombre_empleado);
+        --Contador de empleados procesados
+        v_contador := v_contador + 1;
+        
+        
     END LOOP;
-
-    COMMIT;
-
+    
+    --  Validación del total de iteraciones antes de confirmar la transacción
+    IF v_contador = v_total_empleados THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Total empleados procesados: ' || v_contador);
+    ELSE
+        ROLLBACK;
+        DBMS_OUTPUT.PUT_LINE('No se procesaron todos los empleados. Procesados: '
+                             || v_contador || ' de ' || v_total_empleados);
+    END IF;
+    
 EXCEPTION
     WHEN OTHERS THEN
         DBMS_OUTPUT.PUT_LINE('Error al procesar cliente');
